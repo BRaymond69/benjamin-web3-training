@@ -1,0 +1,43 @@
+name: Deploy Monitoring Stack
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io docker-compose
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Build and Deploy
+        run: |
+          docker-compose -f docker-compose.yml up -d --build
+      - name: Verify Deployment
+        run: |
+          if curl -s http://localhost:8080 | grep -q "Monitoring Dashboard"; then
+            echo "Deployment successful!"
+          else
+            echo "Deployment failed!"
+            exit 1
+          fi
+      - name: Cleanup
+        run: |
+          docker-compose -f docker-compose.yml down
+          docker system prune -f
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "Deployment completed successfully!"
+          # Here you can add a notification step, e.g., sending a message to Slack or
+          # updating a status page.
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "Deployment failed!"
+          # Here you can add a notification step, e.g., sending a message to Slack or
+          # updating a status page.
