@@ -1,0 +1,51 @@
+version: "3.8"
+services:
+  ethexporter:
+    image: hunterlong/ethexporter
+    platform: linux/amd64
+    environment:
+      - WEB3_PROVIDER=${WEB3_PROVIDER}
+      - ADDRESS=${WEB3_ADDRESS}
+      - REFRESH_SECONDS=20
+    ports:
+      - "9015:9015"
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+      image: grafana/grafana
+      environment:
+        - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+        - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      ports:
+        - "3000:3000"
+      volumes:
+        - grafana_data:/var/lib/grafana
+      depends_on:
+        - prometheus
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true" # Enable Traefik dashboard (Dev Mode)
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8081:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+
+volumes:
+  prometheus_data:
+  grafana_data:
